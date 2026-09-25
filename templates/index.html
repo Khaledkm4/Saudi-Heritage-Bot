@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المعزّب | منصة الموروث السعودي التعليمية 🌴</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    
+    <style>
+        :root {
+            --gold: #c9a84c; --gold-light: #e8c97a;
+            --bg: #f4ece4; --text: #2a1a05; --dim: #8a7050;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background-color: var(--bg); color: var(--text); 
+            font-family: 'Tajawal', sans-serif; 
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden; 
+            background-image: url('https://i.pinimg.com/736x/18/6e/49/186e49cfd75a9999b7e3d2f5af562a05.jpg');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            transition: background 0.3s;
+        }
+
+        /* ----- HEADER ----- */
+        header {
+            z-index: 1000; padding: 11px 22px; border-bottom: 1px solid rgba(139,100,20,0.15);
+            display: flex; align-items: center; gap: 12px; 
+            background: rgba(255,253,245,0.97); backdrop-filter: blur(12px); 
+            flex-shrink: 0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: 0.3s;
+        }
+        .logo-icon {
+            width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--gold), #7a5a10);
+            display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(201,168,76,0.35);
+        }
+        .logo h1 { font-family: 'Amiri', serif; font-size: 20px; color: #5a3a05; }
+        .logo p { font-size: 11px; color: var(--dim); }
+        .nav-tabs { margin-right: auto; display: flex; gap: 6px; }
+        .nav-tab {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(139,100,20,0.2);
+            background: transparent; color: var(--dim); font-size: 14px; cursor: pointer; transition: all 0.2s; font-weight: bold;
+        }
+        .nav-tab.active, .nav-tab:hover { background: rgba(201,168,76,0.15); color: #5a3a05; border-color: rgba(201,168,76,.5); }
+
+        .view-container { display: none; flex: 1; overflow: hidden; width: 100%; position: relative; }
+        .view-container.active { display: flex; flex-direction: column; }
+
+        /* ----- Chat View ----- */
+        #chat-view { justify-content: center; align-items: center; padding: 20px; }
+        .chat-container {
+            width: 100%; max-width: 650px; height: 100%; max-height: 85vh;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
+            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; border: 2px solid #d4c4b7;
+        }
+        .main-chat-header { background-color: #5c4535; color: white; padding: 15px; text-align: center; font-size: 1.3em; font-weight: bold; }
+        .chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .message { max-width: 80%; padding: 12px 18px; border-radius: 15px; line-height: 1.6; white-space: pre-wrap; font-size: 15px; }
+        .user-msg { background-color: #8b7355; color: white; align-self: flex-start; border-bottom-right-radius: 0; }
+        .bot-msg { background-color: #eaddd3; color: #3e2f24; align-self: flex-end; border-bottom-left-radius: 0; border: 1px solid #d4c4b7; }
+        .input-area { display: flex; padding: 15px; background-color: white; border-top: 1px solid #ddd; }
+        .input-area input { flex: 1; padding: 15px; border: 1px solid #ccc; border-radius: 10px; font-size: 1em; font-family: inherit; outline: none; }
+        .input-area button { padding: 15px 25px; margin-right: 10px; background-color: #5c4535; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1em; }
+
+        /* ----- Map View ----- */
+        #map { width: 100%; height: 100%; z-index: 1; }
+        
+        .welcome-overlay {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,253,245,0.95); padding: 20px 40px; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); text-align: center; z-index: 10;
+            border: 2px solid rgba(201,168,76,0.3); backdrop-filter: blur(5px); transition: 0.4s;
+        }
+        .welcome-overlay h2 { color: #5a3a05; font-family: 'Amiri', serif; margin: 10px 0 5px; }
+
+        .custom-pin {
+            width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s;
+        }
+        .custom-pin.active-pin { transform: scale(1.2); box-shadow: 0 0 0 4px rgba(201,168,76,0.4), 0 5px 16px rgba(0,0,0,0.3); }
+
+        /* ----- Bottom Sheet ----- */
+        .bottom-sheet {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 75vh;
+            background: rgba(255, 253, 245, 0.98); backdrop-filter: blur(15px);
+            border-radius: 30px 30px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+            z-index: 1000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.3, 1, 0.3, 1);
+            display: flex; flex-direction: column; border-top: 3px solid var(--gold);
+        }
+        .bottom-sheet.show { transform: translateY(0); }
+        
+        .sheet-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 30px 10px; border-bottom: 1px solid rgba(139,100,20,0.1);
+        }
+        .sheet-header-title { display: flex; align-items: center; gap: 10px; }
+        .sheet-header-title h2 { font-family: 'Amiri', serif; color: #5a3a05; font-size: 24px; }
+        
+        .close-sheet-btn {
+            background: #f4ece4; border: 1px solid #d4c4b7; color: #5c4535;
+            padding: 8px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.2s; font-family: inherit;
+        }
+        .close-sheet-btn:hover { background: #eaddd3; color: red; }
+
+        .sheet-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+        /* ----- Categories (المربعات) ----- */
+        .zigzag-container { display: flex; justify-content: center; gap: 20px; padding: 10px 10px 40px; }
+        .cat-square {
+            width: 110px; height: 110px; background: white; border: 2px solid rgba(139,100,20,0.15);
+            border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; cursor: pointer; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: 0.3s;
+        }
+        .cat-square:nth-child(even) { transform: translateY(25px); }
+        .cat-square:hover, .cat-square.active-cat { border-color: var(--gold); background: rgba(201,168,76,0.05); }
+        .cat-square.active-cat { box-shadow: 0 8px 20px rgba(201,168,76,0.2); }
+        .cat-icon { font-size: 30px; margin-bottom: 5px; }
+        .cat-title { font-size: 14px; font-weight: bold; color: #5c4535; }
+        .cat-arrow {
+            position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
+            width: 26px; height: 26px; background: white; border: 2px solid rgba(139,100,20,0.3);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: #5c4535; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .cat-square.active-cat .cat-arrow { background: var(--gold); color: white; border-color: var(--gold); transform: translateX(-50%) rotate(180deg); }
+
+        /* ----- Accordion List (القائمة المنسدلة للأصناف) ----- */
+        .items-display {
+            background: white; border: 1px solid rgba(139,100,20,0.15); border-radius: 15px;
+            padding: 15px; margin-top: 15px; display: none; animation: slideUp 0.3s ease;
+            max-width: 800px; margin-left: auto; margin-right: auto;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .acc-item { margin-bottom: 10px; border: 1px solid #eaddd3; border-radius: 10px; overflow: hidden; }
+        .acc-btn {
+            width: 100%; text-align: right; background: #fdfaf7; border: none; padding: 15px 20px;
+            font-size: 16px; font-weight: bold; color: #5c4535; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center; transition: 0.3s; font-family: inherit;
+        }
+        .acc-btn:hover { background: #f4ece4; }
+        .acc-item.active .acc-btn { background: rgba(201,168,76,0.15); border-bottom: 1px solid #eaddd3; }
+        .acc-content { padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.4s ease; background: white; }
+        .acc-item.active .acc-content { padding: 20px; max-height: 600px; }
+        .acc-content p { font-size: 14px; color: var(--dim); line-height: 1.8; margin-bottom: 15px; }
+
+        .small-video {
+            width: 100%; max-width: 320px; height: 180px; margin: 0 auto; display: block; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 2px solid #f4ece4;
+        }
+
+        /* ----- الأسئلة الشائعة (FAQ Section) ----- */
+        .faq-section {
+            max-width: 800px; margin: 30px auto 10px; padding: 20px;
+            background: rgba(201,168,76,0.05); border: 1px solid rgba(139,100,20,0.15);
+            border-radius: 15px; display: none; animation: slideUp 0.3s ease;
+        }
+        .faq-title {
+            font-size: 18px; color: #5c4535; margin-bottom: 15px; font-weight: bold; font-family: 'Amiri', serif;
+        }
+        .faq-btn {
+            display: block; width: 100%; text-align: right; background: white;
+            border: 1px solid rgba(139,100,20,0.2); padding: 12px 18px; border-radius: 10px;
+            margin-bottom: 10px; color: var(--dim); font-weight: bold; font-size: 14px;
+            cursor: pointer; transition: 0.3s; font-family: inherit; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .faq-btn:hover { background: var(--gold); color: white; border-color: var(--gold); transform: translateX(-5px); }
+
+        .ask-bot-btn {
+            background: linear-gradient(135deg, var(--gold), #7a5a10); color: white; border: none;
+            padding: 12px 20px; border-radius: 10px; width: 100%; font-size: 15px; font-weight: bold;
+            cursor: pointer; margin-top: 20px; transition: 0.3s; font-family: inherit;
+        }
+        .ask-bot-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(201,168,76,0.3); }
+
+        /* ----- Dark Mode ----- */
+        body.dark-mode .welcome-overlay, body.dark-mode .bottom-sheet { background: rgba(30, 30, 30, 0.95); border-color: #444; }
+        body.dark-mode .welcome-overlay h2, body.dark-mode .sheet-header-title h2, body.dark-mode .cat-title, body.dark-mode .faq-title { color: var(--gold-light); }
+        body.dark-mode .cat-square, body.dark-mode .items-display, body.dark-mode .faq-section { background: #1e1e1e; border-color: #444; }
+        body.dark-mode .acc-item { border-color: #333; }
+        body.dark-mode .acc-btn { background: #2a2a2a; color: #e0e0e0; }
+        body.dark-mode .acc-btn:hover { background: #333; }
+        body.dark-mode .acc-item.active .acc-btn { background: #3a2e1d; border-color: #444; }
+        body.dark-mode .acc-content { background: #222; }
+        body.dark-mode .small-video { border-color: #444; }
+        body.dark-mode .cat-arrow { background: #333; border-color: #555; color: #fff; }
+        body.dark-mode .close-sheet-btn { background: #333; color: #ccc; border-color: #555; }
+        body.dark-mode .faq-btn { background: #2a2a2a; color: #ccc; border-color: #444; }
+        body.dark-mode .faq-btn:hover { background: var(--gold); color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div class="logo-icon">🕌</div>
+            <div class="logo">
+                <h1>المعزّب</h1>
+                <p>منصة الموروث السعودي التعليمية</p>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchView('map')">🗺️ خريطة التراث</button>
+            <button class="nav-tab" onclick="switchView('chat')">💬 اسأل المعزّب</button>
+            <button id="theme-btn" class="nav-tab" onclick="toggleTheme()">🌙 ليلي</button>
+        </div>
+    </header>
+
+    <div id="map-view" class="view-container active">
+        <div id="map"></div>
+        
+        <div id="welcome-overlay" class="welcome-overlay">
+            <div style="font-size: 40px;">🗺️</div>
+            <h2>اختر منطقة</h2>
+            <p>اضغط على أي دبوس في الخريطة<br/>لتعلم تراثها الأصيل</p>
+        </div>
+
+        <div id="bottom-sheet" class="bottom-sheet">
+            <div class="sheet-header">
+                <div class="sheet-header-title">
+                    <span id="sheet-emoji" style="font-size: 28px;"></span>
+                    <h2 id="sheet-title">اسم المنطقة</h2>
+                </div>
+                <button class="close-sheet-btn" onclick="closeSheet()">⬇ رجوع للخريطة</button>
+            </div>
+            
+            <div class="sheet-body">
+                <div class="zigzag-container" id="categories-grid"></div>
+                
+                <div id="items-display" class="items-display"></div>
+                
+                <div id="faq-section" class="faq-section"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-view" class="view-container">
+        <div class="chat-container">
+            <div class="main-chat-header">المعزّب, مرشدك التراثي 🌴</div>
+            <div class="chat-box" id="main-chat-box">
+                <div class="message bot-msg">يا هلا بك! معك المعزّب، دليلك لاكتشاف التراث السعودي والأماكن التاريخية… اسألني وخلني أعرّفك على حكاياتنا الجميلة</div>
+            </div>
+            <div class="input-area">
+                <input type="text" id="main-user-input" placeholder="اكتب سؤالك هنا..." onkeypress="if(event.key === 'Enter') sendMainMessage()">
+                <button onclick="sendMainMessage()">إرسال</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        function switchView(viewName) {
+            document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab:not(#theme-btn)').forEach(el => el.classList.remove('active'));
+            document.getElementById(`${viewName}-view`).classList.add('active');
+            document.querySelector(`.nav-tab[onclick="switchView('${viewName}')"]`).classList.add('active');
+            if(viewName === 'map' && map) setTimeout(() => { map.invalidateSize(); }, 100);
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const themeBtn = document.getElementById('theme-btn');
+            if (document.body.classList.contains('dark-mode')) {
+                themeBtn.innerHTML = '☀️ نهاري';
+                mapTileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}');
+            } else {
+                themeBtn.innerHTML = '🌙 ليلي';
+                mapTileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}');
+            }
+        }
+
+        const mapRegions = {
+            riyadh: { 
+                name: 'الرياض', emoji: '🏙️', color: '#e8901a', lat: 24.68, lng: 46.72,
+                faqs: ['وش قصة قصر المصمك؟', 'كيف كانت الحياة في نجد قديماً؟', 'حدثني عن الدرعية التاريخية'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [
+                        { name: 'صناعة الأبواب النجدية', desc: 'تُصنع قديماً من خشب الأثل وتُزين بالنقوش الهندسية المحفورة والمحروقة، مع تلوينها بالألوان الطبيعية.', video: 'https://www.youtube.com/embed/ScMzIvxBSi4' },
+                        { name: 'حياكة السدو', desc: 'حرفة نسائية تعتمد على غزل صوف الأغنام ووبر الإبل وصناعة بيوت الشعر والمساند.', video: 'https://www.youtube.com/embed/XXXXX' }
+                    ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [
+                        { name: 'الجريش', desc: 'سيد الأطباق النجدية، يُحضر من القمح المجروش مع اللبن واللحم، ويُطبخ على نار هادئة، ويزين بالمسمنة.', video: 'https://www.youtube.com/embed/v7qG08AEXkI' },
+                        { name: 'القرصان', desc: 'أقراص من الخبز الرقيق تُسقى بمرق اللحم والخضار وتزين بالبصل المكرمل.', video: 'https://www.youtube.com/embed/XXXXX' }
+                    ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [
+                        { name: 'المرودن النجدي', desc: 'ثوب رجالي يمتاز بأكمامه الطويلة جداً والواسعة يلبس في المناسبات وأثناء أداء العرضة.', video: 'https://www.youtube.com/embed/zQ3h9r7pBqA' }
+                    ]}
+                ]
+            },
+            makkah: { 
+                name: 'مكة المكرمة', emoji: '🕋', color: '#c9a84c', lat: 21.42, lng: 39.82,
+                faqs: ['كيف كان شكل الزي المكي قديماً؟', 'حدثني عن سقيا الحاج', 'وش هي أسواق الحجاز القديمة؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة السبح', desc: 'تُصنع السبح من الأحجار الكريمة، واليسر، والكهرمان لتكون هدايا للحجاج.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'السليق الطائفي', desc: 'كبسة أرز أبيض تطبخ مع الحليب ومرق اللحم أو الدجاج.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب الحجازي والعمامة', desc: 'يتكون من الثوب، والسديري، والعمامة الحجازية (الغبانة).', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            madinah: {
+                name: 'المدينة المنورة', emoji: '🌙', color: '#2a9a60', lat: 24.47, lng: 39.61,
+                faqs: ['وش هي أشهر أحواش المدينة المنورة؟', 'كيف كانت سكة حديد الحجاز؟', 'وش هي عادات أهل المدينة في العيد؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صياغة الخواتم', desc: 'تشتهر المدينة بصياغة الفضة وتركيب الأحجار الكريمة كالعقيق.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الرز المديني', desc: 'أرز يطبخ بمرق اللحم ويزين بالزبيب والصنوبر والبهارات.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الزبون المديني', desc: 'لباس نسائي فاخر يصنع من الأقمشة الحريرية المطرزة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            eastern: {
+                name: 'المنطقة الشرقية', emoji: '🛢️', color: '#1a90b8', lat: 26.43, lng: 49.98,
+                faqs: ['كيف كانت مهنة الغوص على اللؤلؤ؟', 'وش هي عيون الأحساء القديمة؟', 'حدثني عن ميناء العقير'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'سف الخوص', desc: 'صناعة السلال والمهاف من سعف النخيل.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'العيش الحساوي', desc: 'أرز بني يزرع محلياً ويطبخ بتوابل غنية.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'البشت الحساوي', desc: 'من أفخر أنواع المشالح، يُحاك يدوياً ويُطرز بالزري.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            asir: { 
+                name: 'عسير', emoji: '🏔️', color: '#28a050', lat: 18.22, lng: 42.50,
+                faqs: ['وش هو فن القط العسيري بالتفصيل؟', 'كيف يبنون بيوت الطين والحجر؟', 'حدثني عن قرية رجال ألمع'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🎨', items: [ { name: 'القط العسيري', desc: 'فن زخرفي نسائي عريق يُرسم على جدران المنازل الداخلية.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الحنيذ', desc: 'يُطبخ اللحم في حفرة تحت الأرض (الميفا) ويُغطى بنبات المرخ.', video: 'https://www.youtube.com/embed/YYYYY' } ]},
+                    { title: 'اللبس الشعبي', icon: '👗', items: [ { name: 'الثوب العسيري', desc: 'ثوب نسائي أسود مطرز بكثافة بخيوط ملونة.', video: 'https://www.youtube.com/embed/ZZZZZ' } ]}
+                ]
+            },
+            tabuk: {
+                name: 'تبوك', emoji: '⛺', color: '#8050c8', lat: 28.38, lng: 36.57,
+                faqs: ['وش هي مغاير شعيب؟', 'حدثني عن سكة الحديد في تبوك', 'كيف كان التبادل التجاري في الشمال؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة بيوت الشعر', desc: 'تعتمد على وبر الإبل وشعر الماعز.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'المجللة', desc: 'خبز يفرك بالسمن البري واللبن الرائب.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'اللباس البدوي', desc: 'لباس يقي من برد الصحراء كالفروة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            hail: {
+                name: 'حائل', emoji: '🌾', color: '#b89020', lat: 27.52, lng: 41.69,
+                faqs: ['حدثني عن كرم حاتم الطائي', 'كيف كانت الحياة في جبال أجا وسلمى؟', 'وش هي النقوش الثمودية في حائل؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'المصنوعات الجلدية', desc: 'صناعة القرب والنطوع والدلال الحائلية.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الكبيبا الحائلية', desc: 'ورق عنب محشي بالأرز واللحم والبهارات.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب الحائلي', desc: 'ثوب فضفاض مريح للرجل، وللنساء ثوب النشل.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            qassim: {
+                name: 'القصيم', emoji: '🌴', color: '#c87820', lat: 26.33, lng: 43.97,
+                faqs: ['وش هو برج الشنانة؟', 'كيف كانت قوافل العقيلات؟', 'حدثني عن سوق المسوكف'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'النجارة والنحت', desc: 'صناعة الأبواب والنوافذ والشداد الخشبي.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الكليجا', desc: 'قرص محشو بالدبس والليمون الأسود والهيل.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'المقطع', desc: 'لباس نسائي يتميز بالحشمة والتطريز البسيط.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            jazan: {
+                name: 'جازان', emoji: '🐟', color: '#18a890', lat: 16.89, lng: 42.55,
+                faqs: ['حدثني عن قرية جازان التراثية', 'وش هي جزر فرسان تاريخياً؟', 'كيف كانت زراعة البن الخولاني؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة الفخار', desc: 'صناعة التنور الفخاري الذي يستخدم للطبخ.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'المغش', desc: 'لحم وخضار يطبخ داخل التنور الفخاري.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الوزرة وعصابة الفل', desc: 'يتزين الرجال بالعصابة المصنوعة من الفل.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            najran: {
+                name: 'نجران', emoji: '🌿', color: '#38a058', lat: 17.49, lng: 44.13,
+                faqs: ['وش هي قصة أصحاب الأخدود؟', 'حدثني عن قصر الإمارة التاريخي', 'كيف يبنون البيوت الطينية في نجران؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة الجنبية', desc: 'الخنجر النجراني ذو المقبض الثمين.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الرقش', desc: 'خبز رقيق يصب عليه مرق اللحم في إناء حجري.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب المذيل', desc: 'لباس نسائي طويل الأكمام يجر على الأرض.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            baha: {
+                name: 'الباحة', emoji: '🌳', color: '#4caf50', lat: 20.01, lng: 41.46,
+                faqs: ['حدثني عن قرية ذي عين الأثرية', 'كيف كانت الأسواق الأسبوعية في الباحة؟', 'وش هو قصر بن رقوش؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'البناء الحجري', desc: 'بناء المنازل والحصون القديمة من الحجارة.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الدغابيس', desc: 'عجين يقطع لقطع متوسطة الحجم وتطبخ مع المرق.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب المكمم', desc: 'اللباس التقليدي للرجال في السراة بأكمام واسعة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            jouf: {
+                name: 'الجوف', emoji: '🫒', color: '#8bc34a', lat: 29.97, lng: 40.21,
+                faqs: ['حدثني عن قلعة زعبل', 'وش قصة مسجد عمر بن الخطاب في دومة الجندل؟', 'كيف كانت حياة البادية في الجوف؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'حياكة السدو', desc: 'صناعة المفروشات التقليدية من خيوط الصوف.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'البكيلة', desc: 'أكلة شتوية تتكون من دقيق نبتة (السمح) مع التمر.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'العباءة الجوفية', desc: 'اللباس التقليدي لشمال المملكة يمتاز بالدفء.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            },
+            northern: {
+                name: 'الحدود الشمالية', emoji: '⛺', color: '#795548', lat: 30.98, lng: 41.01,
+                faqs: ['وش هو درب زبيدة التاريخي؟', 'حدثني عن قصر الإمارة في عرعر', 'كيف كانت رحلات الصيد بالصقور قديماً؟'],
+                categories: [
+                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة الفروة', desc: 'معطف شتوي أساسي يصنع من جلود وصوف الأغنام.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الخميعاء', desc: 'خبز صاج يقطع ويفرك بالحليب والسمن.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
+                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'لباس البادية', desc: 'الثوب، الشماغ، العقال المقصب، والفروة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
+                ]
+            }
+        };
+
+        const map = L.map('map', { center: [23.8, 44.5], zoom: 6, zoomControl: false, attributionControl: false });
+        let mapTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+
+        let activeMapId = null; const mapMarkers = {};
+        let currentRegionData = null;
+
+        function makeIcon(r, isActive) {
+            return L.divIcon({
+                className:'', html:`<div class="custom-pin${isActive?' active-pin':''}" style="background:${r.color}">${r.emoji}</div>`,
+                iconSize:[36,36], iconAnchor:[18,18]
+            });
+        }
+
+        Object.entries(mapRegions).forEach(([id, r]) => {
+            const m = L.marker([r.lat, r.lng], {icon: makeIcon(r, false)}).addTo(map);
+            m.on('click', () => openSheetForRegion(id)); mapMarkers[id] = m;
+        });
+
+        function openSheetForRegion(id) {
+            if(activeMapId) mapMarkers[activeMapId].setIcon(makeIcon(mapRegions[activeMapId], false));
+            activeMapId = id; 
+            currentRegionData = mapRegions[id];
+            mapMarkers[id].setIcon(makeIcon(currentRegionData, true));
+            map.flyTo([currentRegionData.lat, currentRegionData.lng], 7, {duration: 1.2});
+
+            document.getElementById('welcome-overlay').style.opacity = '0';
+            document.getElementById('welcome-overlay').style.pointerEvents = 'none';
+            
+            document.getElementById('sheet-emoji').innerText = currentRegionData.emoji;
+            document.getElementById('sheet-title').innerText = currentRegionData.name;
+            
+            renderCategoriesGrid();
+            renderFAQs();
+            
+            document.getElementById('items-display').style.display = 'none';
+            document.getElementById('bottom-sheet').classList.add('show');
+        }
+
+        function closeSheet() {
+            document.getElementById('bottom-sheet').classList.remove('show');
+            document.getElementById('welcome-overlay').style.opacity = '1';
+            document.getElementById('welcome-overlay').style.pointerEvents = 'auto';
+            if(activeMapId) {
+                mapMarkers[activeMapId].setIcon(makeIcon(mapRegions[activeMapId], false));
+                activeMapId = null;
+            }
+            map.flyTo([23.8, 44.5], 6, {duration: 1});
+        }
+
+        function renderCategoriesGrid() {
+            const grid = document.getElementById('categories-grid');
+            grid.innerHTML = currentRegionData.categories.map((cat, index) => `
+                <div class="cat-square" onclick="showCategoryItems(${index})">
+                    <div class="cat-icon">${cat.icon}</div>
+                    <div class="cat-title">${cat.title}</div>
+                    <div class="cat-arrow">▼</div>
+                </div>
+            `).join('');
+        }
+
+        function renderFAQs() {
+            const faqSec = document.getElementById('faq-section');
+            if (currentRegionData.faqs && currentRegionData.faqs.length > 0) {
+                let html = `<div class="faq-title">💬 أسئلة شائعة عن ${currentRegionData.name}</div>`;
+                currentRegionData.faqs.forEach(q => {
+                    html += `<button class="faq-btn" onclick="sendQuestionToChat('${q}')">❓ ${q}</button>`;
+                });
+                faqSec.innerHTML = html;
+                faqSec.style.display = 'block';
+            } else {
+                faqSec.style.display = 'none';
+            }
+        }
+
+        function showCategoryItems(catIndex) {
+            document.querySelectorAll('.cat-square').forEach((el, idx) => {
+                if(idx === catIndex) el.classList.add('active-cat');
+                else el.classList.remove('active-cat');
+            });
+
+            const catData = currentRegionData.categories[catIndex];
+            const display = document.getElementById('items-display');
+            
+            let itemsHtml = catData.items.map((item, index) => `
+                <div class="acc-item" id="acc-item-${catIndex}-${index}">
+                    <button class="acc-btn" onclick="toggleAccordionItem(${catIndex}, ${index})">
+                        <span>${item.name}</span>
+                        <span class="icon">▼</span>
+                    </button>
+                    <div class="acc-content">
+                        <p>${item.desc}</p>
+                        <iframe class="small-video" src="${item.video}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+                </div>
+            `).join('');
+
+            display.innerHTML = `
+                ${itemsHtml}
+                <button class="ask-bot-btn" onclick="sendQuestionToChat('حدثني تفاصيل أكثر عن ${catData.title} في ${currentRegionData.name}؟')">
+                    💬 اسأل المعزّب تفاصيل أكثر عن ${catData.title}
+                </button>
+            `;
+            
+            display.style.display = 'block';
+            setTimeout(() => { display.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+        }
+
+        function toggleAccordionItem(catIndex, itemIndex) {
+            const clickedItem = document.getElementById(`acc-item-${catIndex}-${itemIndex}`);
+            document.querySelectorAll('.acc-item').forEach(item => {
+                if(item !== clickedItem) item.classList.remove('active');
+            });
+            clickedItem.classList.toggle('active');
+        }
+
+        function sendQuestionToChat(question) {
+            switchView('chat');
+            const inputField = document.getElementById("main-user-input");
+            inputField.value = question;
+            inputField.focus();
+            
+            setTimeout(() => {
+                sendMainMessage();
+            }, 300);
+        }
+
+        // ==========================================
+        // إضافة: نظام إرسال الرسائل الحي (Streaming)
+        // ==========================================
+        async function sendMainMessage() {
+            const inputField = document.getElementById("main-user-input");
+            const message = inputField.value.trim();
+            if (!message) return;
+            
+            const chatBox = document.getElementById("main-chat-box");
+            
+            // عرض رسالة المستخدم
+            chatBox.innerHTML += `<div class="message user-msg">${message}</div>`;
+            inputField.value = ""; 
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 2. تجهيز مكان لرسالة البوت عشان تنكتب فيه حرف بحرف
+            const botMessageDiv = document.createElement("div");
+            botMessageDiv.className = "message bot-msg";
+            chatBox.appendChild(botMessageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 3. الاتصال بالخلفية (Flask) لاستقبال البث الحي
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, {stream: true});
+                    // إضافة النص الجديد للمربع فور وصوله
+                    botMessageDiv.innerHTML += chunk;
+                    // النزول لأسفل المحادثة مع كل حرف يكتب
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            } catch (error) {
+                botMessageDiv.innerHTML += `<span style="color: red;">عذراً، صار في مشكلة في الاتصال.</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
