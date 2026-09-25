@@ -138,6 +138,7 @@
             font-size: 16px; font-weight: bold; color: #5c4535; cursor: pointer; display: flex;
             justify-content: space-between; align-items: center; transition: 0.3s; font-family: inherit;
         }
+        html[dir="ltr"] .acc-btn { text-align: left; }
         .acc-btn:hover { background: #f4ece4; }
         .acc-item.active .acc-btn { background: rgba(201,168,76,0.15); border-bottom: 1px solid #eaddd3; }
         .acc-content { padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.4s ease; background: white; }
@@ -164,7 +165,9 @@
             margin-bottom: 10px; color: var(--dim); font-weight: bold; font-size: 14px;
             cursor: pointer; transition: 0.3s; font-family: inherit; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
+        html[dir="ltr"] .faq-btn { text-align: left; }
         .faq-btn:hover { background: var(--gold); color: white; border-color: var(--gold); transform: translateX(-5px); }
+        html[dir="ltr"] .faq-btn:hover { transform: translateX(5px); }
 
         .ask-bot-btn {
             background: linear-gradient(135deg, var(--gold), #7a5a10); color: white; border: none;
@@ -202,6 +205,7 @@
             <button class="nav-tab active" onclick="switchView('map')">🗺️ خريطة التراث</button>
             <button class="nav-tab" onclick="switchView('chat')">💬 اسأل المعزّب</button>
             <button id="theme-btn" class="nav-tab" onclick="toggleTheme()">🌙 ليلي</button>
+            <button id="lang-btn" class="nav-tab" onclick="toggleLanguage()">🌐 English</button>
         </div>
     </header>
 
@@ -225,9 +229,7 @@
             
             <div class="sheet-body">
                 <div class="zigzag-container" id="categories-grid"></div>
-                
                 <div id="items-display" class="items-display"></div>
-                
                 <div id="faq-section" class="faq-section"></div>
             </div>
         </div>
@@ -248,153 +250,91 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        function switchView(viewName) {
-            document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-tab:not(#theme-btn)').forEach(el => el.classList.remove('active'));
-            document.getElementById(`${viewName}-view`).classList.add('active');
-            document.querySelector(`.nav-tab[onclick="switchView('${viewName}')"]`).classList.add('active');
-            if(viewName === 'map' && map) setTimeout(() => { map.invalidateSize(); }, 100);
-        }
+        let currentLang = 'ar';
 
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const themeBtn = document.getElementById('theme-btn');
-            if (document.body.classList.contains('dark-mode')) {
-                themeBtn.innerHTML = '☀️ نهاري';
-                mapTileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}');
-            } else {
-                themeBtn.innerHTML = '🌙 ليلي';
-                mapTileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}');
-            }
-        }
-
-        const mapRegions = {
-            riyadh: { 
-                name: 'الرياض', emoji: '🏙️', color: '#e8901a', lat: 24.68, lng: 46.72,
-                faqs: ['وش قصة قصر المصمك؟', 'كيف كانت الحياة في نجد قديماً؟', 'حدثني عن الدرعية التاريخية'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [
-                        { name: 'صناعة الأبواب النجدية', desc: 'تُصنع قديماً من خشب الأثل وتُزين بالنقوش الهندسية المحفورة والمحروقة، مع تلوينها بالألوان الطبيعية.', video: 'https://www.youtube.com/embed/ScMzIvxBSi4' },
-                        { name: 'حياكة السدو', desc: 'حرفة نسائية تعتمد على غزل صوف الأغنام ووبر الإبل وصناعة بيوت الشعر والمساند.', video: 'https://www.youtube.com/embed/XXXXX' }
-                    ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [
-                        { name: 'الجريش', desc: 'سيد الأطباق النجدية، يُحضر من القمح المجروش مع اللبن واللحم، ويُطبخ على نار هادئة، ويزين بالمسمنة.', video: 'https://www.youtube.com/embed/v7qG08AEXkI' },
-                        { name: 'القرصان', desc: 'أقراص من الخبز الرقيق تُسقى بمرق اللحم والخضار وتزين بالبصل المكرمل.', video: 'https://www.youtube.com/embed/XXXXX' }
-                    ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [
-                        { name: 'المرودن النجدي', desc: 'ثوب رجالي يمتاز بأكمامه الطويلة جداً والواسعة يلبس في المناسبات وأثناء أداء العرضة.', video: 'https://www.youtube.com/embed/zQ3h9r7pBqA' }
-                    ]}
-                ]
+        const uiTranslations = {
+            ar: {
+                siteTitle: "المعزّب", siteDesc: "منصة الموروث السعودي التعليمية",
+                mapTab: "🗺️ خريطة التراث", chatTab: "💬 اسأل المعزّب",
+                mapTitle: "اختر منطقة", mapDesc: "اضغط على أي دبوس في الخريطة<br/>لتعلم تراثها الأصيل",
+                backBtn: "⬇ رجوع للخريطة", chatHeader: "المعزّب, مرشدك التراثي 🌴",
+                botWelcome: "يا هلا بك! معك المعزّب، دليلك لاكتشاف التراث السعودي والأماكن التاريخية… اسألني وخلني أعرّفك على حكاياتنا الجميلة",
+                chatPlaceholder: "اكتب سؤالك هنا...", sendBtn: "إرسال",
+                themeDark: "🌙 ليلي", themeLight: "☀️ نهاري",
+                faqTitle: "💬 أسئلة شائعة عن", askBtn: "💬 اسأل المعزّب تفاصيل أكثر عن",
+                askFormat: (cat, reg) => `حدثني تفاصيل أكثر عن ${cat} في ${reg}؟`
             },
-            makkah: { 
-                name: 'مكة المكرمة', emoji: '🕋', color: '#c9a84c', lat: 21.42, lng: 39.82,
-                faqs: ['كيف كان شكل الزي المكي قديماً؟', 'حدثني عن سقيا الحاج', 'وش هي أسواق الحجاز القديمة؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة السبح', desc: 'تُصنع السبح من الأحجار الكريمة، واليسر، والكهرمان لتكون هدايا للحجاج.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'السليق الطائفي', desc: 'كبسة أرز أبيض تطبخ مع الحليب ومرق اللحم أو الدجاج.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب الحجازي والعمامة', desc: 'يتكون من الثوب، والسديري، والعمامة الحجازية (الغبانة).', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            madinah: {
-                name: 'المدينة المنورة', emoji: '🌙', color: '#2a9a60', lat: 24.47, lng: 39.61,
-                faqs: ['وش هي أشهر أحواش المدينة المنورة؟', 'كيف كانت سكة حديد الحجاز؟', 'وش هي عادات أهل المدينة في العيد؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صياغة الخواتم', desc: 'تشتهر المدينة بصياغة الفضة وتركيب الأحجار الكريمة كالعقيق.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الرز المديني', desc: 'أرز يطبخ بمرق اللحم ويزين بالزبيب والصنوبر والبهارات.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الزبون المديني', desc: 'لباس نسائي فاخر يصنع من الأقمشة الحريرية المطرزة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            eastern: {
-                name: 'المنطقة الشرقية', emoji: '🛢️', color: '#1a90b8', lat: 26.43, lng: 49.98,
-                faqs: ['كيف كانت مهنة الغوص على اللؤلؤ؟', 'وش هي عيون الأحساء القديمة؟', 'حدثني عن ميناء العقير'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'سف الخوص', desc: 'صناعة السلال والمهاف من سعف النخيل.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'العيش الحساوي', desc: 'أرز بني يزرع محلياً ويطبخ بتوابل غنية.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'البشت الحساوي', desc: 'من أفخر أنواع المشالح، يُحاك يدوياً ويُطرز بالزري.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            asir: { 
-                name: 'عسير', emoji: '🏔️', color: '#28a050', lat: 18.22, lng: 42.50,
-                faqs: ['وش هو فن القط العسيري بالتفصيل؟', 'كيف يبنون بيوت الطين والحجر؟', 'حدثني عن قرية رجال ألمع'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🎨', items: [ { name: 'القط العسيري', desc: 'فن زخرفي نسائي عريق يُرسم على جدران المنازل الداخلية.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الحنيذ', desc: 'يُطبخ اللحم في حفرة تحت الأرض (الميفا) ويُغطى بنبات المرخ.', video: 'https://www.youtube.com/embed/YYYYY' } ]},
-                    { title: 'اللبس الشعبي', icon: '👗', items: [ { name: 'الثوب العسيري', desc: 'ثوب نسائي أسود مطرز بكثافة بخيوط ملونة.', video: 'https://www.youtube.com/embed/ZZZZZ' } ]}
-                ]
-            },
-            tabuk: {
-                name: 'تبوك', emoji: '⛺', color: '#8050c8', lat: 28.38, lng: 36.57,
-                faqs: ['وش هي مغاير شعيب؟', 'حدثني عن سكة الحديد في تبوك', 'كيف كان التبادل التجاري في الشمال؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة بيوت الشعر', desc: 'تعتمد على وبر الإبل وشعر الماعز.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'المجللة', desc: 'خبز يفرك بالسمن البري واللبن الرائب.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'اللباس البدوي', desc: 'لباس يقي من برد الصحراء كالفروة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            hail: {
-                name: 'حائل', emoji: '🌾', color: '#b89020', lat: 27.52, lng: 41.69,
-                faqs: ['حدثني عن كرم حاتم الطائي', 'كيف كانت الحياة في جبال أجا وسلمى؟', 'وش هي النقوش الثمودية في حائل؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'المصنوعات الجلدية', desc: 'صناعة القرب والنطوع والدلال الحائلية.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الكبيبا الحائلية', desc: 'ورق عنب محشي بالأرز واللحم والبهارات.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب الحائلي', desc: 'ثوب فضفاض مريح للرجل، وللنساء ثوب النشل.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            qassim: {
-                name: 'القصيم', emoji: '🌴', color: '#c87820', lat: 26.33, lng: 43.97,
-                faqs: ['وش هو برج الشنانة؟', 'كيف كانت قوافل العقيلات؟', 'حدثني عن سوق المسوكف'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'النجارة والنحت', desc: 'صناعة الأبواب والنوافذ والشداد الخشبي.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الكليجا', desc: 'قرص محشو بالدبس والليمون الأسود والهيل.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'المقطع', desc: 'لباس نسائي يتميز بالحشمة والتطريز البسيط.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            jazan: {
-                name: 'جازان', emoji: '🐟', color: '#18a890', lat: 16.89, lng: 42.55,
-                faqs: ['حدثني عن قرية جازان التراثية', 'وش هي جزر فرسان تاريخياً؟', 'كيف كانت زراعة البن الخولاني؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة الفخار', desc: 'صناعة التنور الفخاري الذي يستخدم للطبخ.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'المغش', desc: 'لحم وخضار يطبخ داخل التنور الفخاري.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الوزرة وعصابة الفل', desc: 'يتزين الرجال بالعصابة المصنوعة من الفل.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            najran: {
-                name: 'نجران', emoji: '🌿', color: '#38a058', lat: 17.49, lng: 44.13,
-                faqs: ['وش هي قصة أصحاب الأخدود؟', 'حدثني عن قصر الإمارة التاريخي', 'كيف يبنون البيوت الطينية في نجران؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة الجنبية', desc: 'الخنجر النجراني ذو المقبض الثمين.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الرقش', desc: 'خبز رقيق يصب عليه مرق اللحم في إناء حجري.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب المذيل', desc: 'لباس نسائي طويل الأكمام يجر على الأرض.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            baha: {
-                name: 'الباحة', emoji: '🌳', color: '#4caf50', lat: 20.01, lng: 41.46,
-                faqs: ['حدثني عن قرية ذي عين الأثرية', 'كيف كانت الأسواق الأسبوعية في الباحة؟', 'وش هو قصر بن رقوش؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'البناء الحجري', desc: 'بناء المنازل والحصون القديمة من الحجارة.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الدغابيس', desc: 'عجين يقطع لقطع متوسطة الحجم وتطبخ مع المرق.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'الثوب المكمم', desc: 'اللباس التقليدي للرجال في السراة بأكمام واسعة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            jouf: {
-                name: 'الجوف', emoji: '🫒', color: '#8bc34a', lat: 29.97, lng: 40.21,
-                faqs: ['حدثني عن قلعة زعبل', 'وش قصة مسجد عمر بن الخطاب في دومة الجندل؟', 'كيف كانت حياة البادية في الجوف؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'حياكة السدو', desc: 'صناعة المفروشات التقليدية من خيوط الصوف.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'البكيلة', desc: 'أكلة شتوية تتكون من دقيق نبتة (السمح) مع التمر.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'العباءة الجوفية', desc: 'اللباس التقليدي لشمال المملكة يمتاز بالدفء.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
-            },
-            northern: {
-                name: 'الحدود الشمالية', emoji: '⛺', color: '#795548', lat: 30.98, lng: 41.01,
-                faqs: ['وش هو درب زبيدة التاريخي؟', 'حدثني عن قصر الإمارة في عرعر', 'كيف كانت رحلات الصيد بالصقور قديماً؟'],
-                categories: [
-                    { title: 'الحرف اليدوية', icon: '🏺', items: [ { name: 'صناعة الفروة', desc: 'معطف شتوي أساسي يصنع من جلود وصوف الأغنام.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'الأكلات الشعبية', icon: '🍽️', items: [ { name: 'الخميعاء', desc: 'خبز صاج يقطع ويفرك بالحليب والسمن.', video: 'https://www.youtube.com/embed/XXXXX' } ]},
-                    { title: 'اللبس الشعبي', icon: '👘', items: [ { name: 'لباس البادية', desc: 'الثوب، الشماغ، العقال المقصب، والفروة.', video: 'https://www.youtube.com/embed/XXXXX' } ]}
-                ]
+            en: {
+                siteTitle: "Al-Ma'zib", siteDesc: "Saudi Heritage Educational Platform",
+                mapTab: "🗺️ Heritage Map", chatTab: "💬 Ask Al-Ma'zib",
+                mapTitle: "Select a Region", mapDesc: "Click on any pin on the map<br/>to learn about its heritage",
+                backBtn: "⬇ Back to Map", chatHeader: "Al-Ma'zib, Your Heritage Guide 🌴",
+                botWelcome: "Welcome! I'm Al-Ma'zib, your guide to Saudi heritage and historical places. Ask me anything!",
+                chatPlaceholder: "Type your question here...", sendBtn: "Send",
+                themeDark: "🌙 Dark", themeLight: "☀️ Light",
+                faqTitle: "💬 FAQs about", askBtn: "💬 Ask Al-Ma'zib more about",
+                askFormat: (cat, reg) => `Tell me more details about ${cat} in ${reg}?`
             }
         };
+
+        const mapRegions = {
+            ar: {
+                riyadh: { name: 'الرياض', emoji: '🏙️', color: '#e8901a', lat: 24.68, lng: 46.72, faqs: ['وش قصة قصر المصمك؟', 'كيف كانت الحياة في نجد قديماً؟', 'حدثني عن الدرعية التاريخية'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صناعة الأبواب النجدية', desc: 'تُصنع قديماً من خشب الأثل وتُزين بالنقوش الهندسية المحفورة والمحروقة، مع تلوينها بالألوان الطبيعية.', video: 'https://www.youtube.com/embed/ScMzIvxBSi4' }, { name: 'حياكة السدو', desc: 'حرفة نسائية تعتمد على غزل صوف الأغنام ووبر الإبل وصناعة بيوت الشعر والمساند.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الجريش', desc: 'سيد الأطباق النجدية، يُحضر من القمح المجروش مع اللبن واللحم، ويُطبخ على نار هادئة، ويزين بالمسمنة.', video: 'https://www.youtube.com/embed/v7qG08AEXkI' }, { name: 'القرصان', desc: 'أقراص من الخبز الرقيق تُسقى بمرق اللحم والخضار وتزين بالبصل المكرمل.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'المرودن النجدي', desc: 'ثوب رجالي يمتاز بأكمامه الطويلة جداً والواسعة يلبس في المناسبات وأثناء أداء العرضة.', video: 'https://www.youtube.com/embed/zQ3h9r7pBqA' }] }] },
+                makkah: { name: 'مكة المكرمة', emoji: '🕋', color: '#c9a84c', lat: 21.42, lng: 39.82, faqs: ['كيف كان شكل الزي المكي قديماً؟', 'حدثني عن سقيا الحاج', 'وش هي أسواق الحجاز القديمة؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صناعة السبح', desc: 'تُصنع السبح من الأحجار الكريمة، واليسر، والكهرمان لتكون هدايا للحجاج.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'السليق الطائفي', desc: 'كبسة أرز أبيض تطبخ مع الحليب ومرق اللحم أو الدجاج.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'الثوب الحجازي والعمامة', desc: 'يتكون من الثوب، والسديري، والعمامة الحجازية (الغبانة).', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                madinah: { name: 'المدينة المنورة', emoji: '🌙', color: '#2a9a60', lat: 24.47, lng: 39.61, faqs: ['وش هي أشهر أحواش المدينة المنورة؟', 'كيف كانت سكة حديد الحجاز؟', 'وش هي عادات أهل المدينة في العيد؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صياغة الخواتم', desc: 'تشتهر المدينة بصياغة الفضة وتركيب الأحجار الكريمة كالعقيق.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الرز المديني', desc: 'أرز يطبخ بمرق اللحم ويزين بالزبيب والصنوبر والبهارات.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'الزبون المديني', desc: 'لباس نسائي فاخر يصنع من الأقمشة الحريرية المطرزة.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                eastern: { name: 'المنطقة الشرقية', emoji: '🛢️', color: '#1a90b8', lat: 26.43, lng: 49.98, faqs: ['كيف كانت مهنة الغوص على اللؤلؤ؟', 'وش هي عيون الأحساء القديمة؟', 'حدثني عن ميناء العقير'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'سف الخوص', desc: 'صناعة السلال والمهاف من سعف النخيل.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'العيش الحساوي', desc: 'أرز بني يزرع محلياً ويطبخ بتوابل غنية.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'البشت الحساوي', desc: 'من أفخر أنواع المشالح، يُحاك يدوياً ويُطرز بالزري.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                asir: { name: 'عسير', emoji: '🏔️', color: '#28a050', lat: 18.22, lng: 42.50, faqs: ['وش هو فن القط العسيري بالتفصيل؟', 'كيف يبنون بيوت الطين والحجر؟', 'حدثني عن قرية رجال ألمع'], categories: [{ title: 'الحرف اليدوية', icon: '🎨', items: [{ name: 'القط العسيري', desc: 'فن زخرفي نسائي عريق يُرسم على جدران المنازل الداخلية.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الحنيذ', desc: 'يُطبخ اللحم في حفرة تحت الأرض (الميفا) ويُغطى بنبات المرخ.', video: 'https://www.youtube.com/embed/YYYYY' }] }, { title: 'اللبس الشعبي', icon: '👗', items: [{ name: 'الثوب العسيري', desc: 'ثوب نسائي أسود مطرز بكثافة بخيوط ملونة.', video: 'https://www.youtube.com/embed/ZZZZZ' }] }] },
+                tabuk: { name: 'تبوك', emoji: '⛺', color: '#8050c8', lat: 28.38, lng: 36.57, faqs: ['وش هي مغاير شعيب؟', 'حدثني عن سكة الحديد في تبوك', 'كيف كان التبادل التجاري في الشمال؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صناعة بيوت الشعر', desc: 'تعتمد على وبر الإبل وشعر الماعز.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'المجللة', desc: 'خبز يفرك بالسمن البري واللبن الرائب.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'اللباس البدوي', desc: 'لباس يقي من برد الصحراء كالفروة.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                hail: { name: 'حائل', emoji: '🌾', color: '#b89020', lat: 27.52, lng: 41.69, faqs: ['حدثني عن كرم حاتم الطائي', 'كيف كانت الحياة في جبال أجا وسلمى؟', 'وش هي النقوش الثمودية في حائل؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'المصنوعات الجلدية', desc: 'صناعة القرب والنطوع والدلال الحائلية.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الكبيبا الحائلية', desc: 'ورق عنب محشي بالأرز واللحم والبهارات.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'الثوب الحائلي', desc: 'ثوب فضفاض مريح للرجل، وللنساء ثوب النشل.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                qassim: { name: 'القصيم', emoji: '🌴', color: '#c87820', lat: 26.33, lng: 43.97, faqs: ['وش هو برج الشنانة؟', 'كيف كانت قوافل العقيلات؟', 'حدثني عن سوق المسوكف'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'النجارة والنحت', desc: 'صناعة الأبواب والنوافذ والشداد الخشبي.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الكليجا', desc: 'قرص محشو بالدبس والليمون الأسود والهيل.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'المقطع', desc: 'لباس نسائي يتميز بالحشمة والتطريز البسيط.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                jazan: { name: 'جازان', emoji: '🐟', color: '#18a890', lat: 16.89, lng: 42.55, faqs: ['حدثني عن قرية جازان التراثية', 'وش هي جزر فرسان تاريخياً؟', 'كيف كانت زراعة البن الخولاني؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صناعة الفخار', desc: 'صناعة التنور الفخاري الذي يستخدم للطبخ.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'المغش', desc: 'لحم وخضار يطبخ داخل التنور الفخاري.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'الوزرة وعصابة الفل', desc: 'يتزين الرجال بالعصابة المصنوعة من الفل.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                najran: { name: 'نجران', emoji: '🌿', color: '#38a058', lat: 17.49, lng: 44.13, faqs: ['وش هي قصة أصحاب الأخدود؟', 'حدثني عن قصر الإمارة التاريخي', 'كيف يبنون البيوت الطينية في نجران؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صناعة الجنبية', desc: 'الخنجر النجراني ذو المقبض الثمين.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الرقش', desc: 'خبز رقيق يصب عليه مرق اللحم في إناء حجري.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'الثوب المذيل', desc: 'لباس نسائي طويل الأكمام يجر على الأرض.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                baha: { name: 'الباحة', emoji: '🌳', color: '#4caf50', lat: 20.01, lng: 41.46, faqs: ['حدثني عن قرية ذي عين الأثرية', 'كيف كانت الأسواق الأسبوعية في الباحة؟', 'وش هو قصر بن رقوش؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'البناء الحجري', desc: 'بناء المنازل والحصون القديمة من الحجارة.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الدغابيس', desc: 'عجين يقطع لقطع متوسطة الحجم وتطبخ مع المرق.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'الثوب المكمم', desc: 'اللباس التقليدي للرجال في السراة بأكمام واسعة.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                jouf: { name: 'الجوف', emoji: '🫒', color: '#8bc34a', lat: 29.97, lng: 40.21, faqs: ['حدثني عن قلعة زعبل', 'وش قصة مسجد عمر بن الخطاب في دومة الجندل؟', 'كيف كانت حياة البادية في الجوف؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'حياكة السدو', desc: 'صناعة المفروشات التقليدية من خيوط الصوف.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'البكيلة', desc: 'أكلة شتوية تتكون من دقيق نبتة (السمح) مع التمر.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'العباءة الجوفية', desc: 'اللباس التقليدي لشمال المملكة يمتاز بالدفء.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                northern: { name: 'الحدود الشمالية', emoji: '⛺', color: '#795548', lat: 30.98, lng: 41.01, faqs: ['وش هو درب زبيدة التاريخي؟', 'حدثني عن قصر الإمارة في عرعر', 'كيف كانت رحلات الصيد بالصقور قديماً؟'], categories: [{ title: 'الحرف اليدوية', icon: '🏺', items: [{ name: 'صناعة الفروة', desc: 'معطف شتوي أساسي يصنع من جلود وصوف الأغنام.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'الأكلات الشعبية', icon: '🍽️', items: [{ name: 'الخميعاء', desc: 'خبز صاج يقطع ويفرك بالحليب والسمن.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'اللبس الشعبي', icon: '👘', items: [{ name: 'لباس البادية', desc: 'الثوب، الشماغ، العقال المقصب، والفروة.', video: 'https://www.youtube.com/embed/XXXXX' }] }] }
+            },
+            en: {
+                riyadh: { name: 'Riyadh', emoji: '🏙️', color: '#e8901a', lat: 24.68, lng: 46.72, faqs: ['What is the story of Masmak Fortress?', 'How was life in Najd in the past?', 'Tell me about historical Diriyah'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Najdi Doors Making', desc: 'Traditionally made from tamarisk wood and decorated with geometric patterns.', video: 'https://www.youtube.com/embed/ScMzIvxBSi4' }, { name: 'Al Sadu Weaving', desc: 'A traditional women\'s craft using sheep wool and camel hair.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Jareesh', desc: 'Made of crushed wheat, yogurt, and meat, topped with spices.', video: 'https://www.youtube.com/embed/v7qG08AEXkI' }, { name: 'Gursan', desc: 'Thin bread soaked in meat and vegetable broth.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Najdi Al-Murawdin', desc: 'Men\'s garment with very long sleeves, worn during Ardah dance.', video: 'https://www.youtube.com/embed/zQ3h9r7pBqA' }] }] },
+                makkah: { name: 'Makkah', emoji: '🕋', color: '#c9a84c', lat: 21.42, lng: 39.82, faqs: ['How did the traditional Makkan outfit look?', 'Tell me about providing water to pilgrims (Siqaya)', 'What are the historical markets of Hejaz?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Misbaha Making', desc: 'Prayer beads made from gemstones and amber as gifts for pilgrims.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Saleeg Taifi', desc: 'White rice cooked with milk and meat or chicken broth.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Hijazi Thobe and Turban', desc: 'Consists of the Thobe, Sudairy, and the Hijazi turban (Ghabanah).', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                madinah: { name: 'Madinah', emoji: '🌙', color: '#2a9a60', lat: 24.47, lng: 39.61, faqs: ['What are the famous neighborhoods (Ahwash) of Madinah?', 'How was the Hejaz Railway?', 'What are the Eid traditions of Madinah?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Rings Crafting', desc: 'Madinah is famous for silver crafting and gemstone mounting.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Madini Rice', desc: 'Rice cooked in meat broth, garnished with raisins and pine nuts.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Zaboon Madini', desc: 'A luxurious women\'s dress made of embroidered silk fabrics.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                eastern: { name: 'Eastern Province', emoji: '🛢️', color: '#1a90b8', lat: 26.43, lng: 49.98, faqs: ['How was the pearl diving profession?', 'What are the ancient springs of Al-Ahsa?', 'Tell me about Al Uqair Port'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Khous Weaving', desc: 'Making baskets and fans from palm fronds.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Hasawi Rice', desc: 'Locally grown brown rice cooked with rich spices.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Hasawi Bisht', desc: 'The finest type of cloak, hand-woven and embroidered with Zari.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                asir: { name: 'Asir', emoji: '🏔️', color: '#28a050', lat: 18.22, lng: 42.50, faqs: ['What is the Al-Qatt Al-Asiri art?', 'How do they build mud and stone houses?', 'Tell me about Rijal Almaa village'], categories: [{ title: 'Handicrafts', icon: '🎨', items: [{ name: 'Al-Qatt Al-Asiri', desc: 'An ancient female decorative art painted on interior walls of houses.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Haneeth', desc: 'Meat cooked in an underground pit (Mifa) covered with Marakh plants.', video: 'https://www.youtube.com/embed/YYYYY' }] }, { title: 'Traditional Clothing', icon: '👗', items: [{ name: 'Asiri Thobe', desc: 'A black women\'s dress heavily embroidered with colorful threads.', video: 'https://www.youtube.com/embed/ZZZZZ' }] }] },
+                tabuk: { name: 'Tabuk', emoji: '⛺', color: '#8050c8', lat: 28.38, lng: 36.57, faqs: ['What is Maghaer Shuaib?', 'Tell me about the railway in Tabuk', 'How was the trade exchange in the north?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Bedouin Tents', desc: 'Woven from camel hair and goat wool.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Mujallalah', desc: 'Bread rubbed with wild ghee and sour milk.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Bedouin Clothes', desc: 'Clothing that protects from desert cold like the Farwa.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                hail: { name: 'Hail', emoji: '🌾', color: '#b89020', lat: 27.52, lng: 41.69, faqs: ['Tell me about Hatim al-Tai\'s generosity', 'How was life in the mountains of Aja and Salma?', 'What are the Thamudic inscriptions in Hail?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Leather Crafts', desc: 'Making traditional Haili leather water bags and utensils.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Haili Kebeeba', desc: 'Grape leaves stuffed with rice, meat, and spices.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Haili Thobe', desc: 'Loose comfortable dress for men, and women wear Al-Nashil.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                qassim: { name: 'Al Qassim', emoji: '🌴', color: '#c87820', lat: 26.33, lng: 43.97, faqs: ['What is the Shinanah Tower?', 'How were the Uqailat caravans?', 'Tell me about Musawkif market'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Carpentry & Carving', desc: 'Making wooden doors, windows, and traditional saddles.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Kleija', desc: 'A disc stuffed with molasses, black lemon, and cardamom.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Al-Maqta', desc: 'Women\'s clothing characterized by modesty and simple embroidery.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                jazan: { name: 'Jazan', emoji: '🐟', color: '#18a890', lat: 16.89, lng: 42.55, faqs: ['Tell me about Jazan Heritage Village', 'What is the history of Farasan Islands?', 'How was Khawlani coffee farming?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Pottery', desc: 'Making clay ovens used for traditional cooking.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Maghsh', desc: 'Meat and vegetables cooked inside a clay pot.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Wizar and Jasmine headband', desc: 'Men wear a traditional wrap and decorate their heads with Jasmine.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                najran: { name: 'Najran', emoji: '🌿', color: '#38a058', lat: 17.49, lng: 44.13, faqs: ['What is the story of the People of the Ditch?', 'Tell me about the historical Emirate Palace', 'How do they build mud houses in Najran?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Janbiya Making', desc: 'The Najrani dagger with a precious handle.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Raqsh', desc: 'Thin bread poured over with meat broth in a stone bowl.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Mudhayyal Thobe', desc: 'Women\'s dress with long sleeves trailing on the ground.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                baha: { name: 'Al Baha', emoji: '🌳', color: '#4caf50', lat: 20.01, lng: 41.46, faqs: ['Tell me about Thee Ain ancient village', 'How were the weekly markets in Al Baha?', 'What is Bin Raqoush Palace?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Stone Building', desc: 'Building houses and ancient forts from stones.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Daghabees', desc: 'Dough cut into medium pieces and cooked with broth.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Mukammam Thobe', desc: 'Traditional men\'s clothing in Al Sarawat with wide sleeves.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                jouf: { name: 'Al Jouf', emoji: '🫒', color: '#8bc34a', lat: 29.97, lng: 40.21, faqs: ['Tell me about Zaabal Castle', 'What is the story of Omar Ibn Al-Khattab Mosque in Dumat Al-Jandal?', 'How was Bedouin life in Al Jouf?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Sadu Weaving', desc: 'Making traditional furnishings from wool threads.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Bukeela', desc: 'A winter dish consisting of Samh plant flour with dates.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Jouf Cloak', desc: 'The traditional dress of the north characterized by warmth.', video: 'https://www.youtube.com/embed/XXXXX' }] }] },
+                northern: { name: 'Northern Borders', emoji: '⛺', color: '#795548', lat: 30.98, lng: 41.01, faqs: ['What is the historical Darb Zubaidah?', 'Tell me about the Emirate Palace in Arar', 'How were falcon hunting trips in the past?'], categories: [{ title: 'Handicrafts', icon: '🏺', items: [{ name: 'Farwa Making', desc: 'An essential winter coat made of sheep skin and wool.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Food', icon: '🍽️', items: [{ name: 'Khumai\'a', desc: 'Saj bread cut and rubbed with milk and ghee.', video: 'https://www.youtube.com/embed/XXXXX' }] }, { title: 'Traditional Clothing', icon: '👘', items: [{ name: 'Bedouin Wear', desc: 'Thobe, Shemagh, Muqassab Aqal, and the Farwa.', video: 'https://www.youtube.com/embed/XXXXX' }] }] }
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('lang-btn').innerHTML = currentLang === 'ar' ? '🌐 English' : '🌐 العربية';
+            
+            const t = uiTranslations[currentLang];
+            document.querySelector('.logo h1').innerText = t.siteTitle;
+            document.querySelector('.logo p').innerText = t.siteDesc;
+            document.querySelectorAll('.nav-tab')[0].innerText = t.mapTab;
+            document.querySelectorAll('.nav-tab')[1].innerText = t.chatTab;
+            document.querySelector('.welcome-overlay h2').innerText = t.mapTitle;
+            document.querySelector('.welcome-overlay p').innerHTML = t.mapDesc;
+            document.querySelector('.close-sheet-btn').innerText = t.backBtn;
+            document.querySelector('.main-chat-header').innerText = t.chatHeader;
+            document.querySelector('.bot-msg').innerText = t.botWelcome;
+            document.getElementById('main-user-input').placeholder = t.chatPlaceholder;
+            document.querySelector('.input-area button').innerText = t.sendBtn;
+
+            const isDark = document.body.classList.contains('dark-mode');
+            document.getElementById('theme-btn').innerHTML = isDark ? t.themeLight : t.themeDark;
+
+            if (activeMapId) {
+                openSheetForRegion(activeMapId);
+            }
+        }
 
         const map = L.map('map', { center: [23.8, 44.5], zoom: 6, zoomControl: false, attributionControl: false });
         let mapTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
@@ -410,15 +350,38 @@
             });
         }
 
-        Object.entries(mapRegions).forEach(([id, r]) => {
+        Object.entries(mapRegions['ar']).forEach(([id, r]) => {
             const m = L.marker([r.lat, r.lng], {icon: makeIcon(r, false)}).addTo(map);
             m.on('click', () => openSheetForRegion(id)); mapMarkers[id] = m;
         });
 
+        function switchView(viewName) {
+            document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab:not(#theme-btn):not(#lang-btn)').forEach(el => el.classList.remove('active'));
+            document.getElementById(`${viewName}-view`).classList.add('active');
+            document.querySelector(`.nav-tab[onclick="switchView('${viewName}')"]`).classList.add('active');
+            if(viewName === 'map' && map) setTimeout(() => { map.invalidateSize(); }, 100);
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const themeBtn = document.getElementById('theme-btn');
+            const isDark = document.body.classList.contains('dark-mode');
+            const t = uiTranslations[currentLang];
+            
+            if (isDark) {
+                themeBtn.innerHTML = t.themeLight;
+                mapTileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}');
+            } else {
+                themeBtn.innerHTML = t.themeDark;
+                mapTileLayer.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}');
+            }
+        }
+
         function openSheetForRegion(id) {
-            if(activeMapId) mapMarkers[activeMapId].setIcon(makeIcon(mapRegions[activeMapId], false));
+            if(activeMapId) mapMarkers[activeMapId].setIcon(makeIcon(mapRegions[currentLang][activeMapId], false));
             activeMapId = id; 
-            currentRegionData = mapRegions[id];
+            currentRegionData = mapRegions[currentLang][id];
             mapMarkers[id].setIcon(makeIcon(currentRegionData, true));
             map.flyTo([currentRegionData.lat, currentRegionData.lng], 7, {duration: 1.2});
 
@@ -440,7 +403,7 @@
             document.getElementById('welcome-overlay').style.opacity = '1';
             document.getElementById('welcome-overlay').style.pointerEvents = 'auto';
             if(activeMapId) {
-                mapMarkers[activeMapId].setIcon(makeIcon(mapRegions[activeMapId], false));
+                mapMarkers[activeMapId].setIcon(makeIcon(mapRegions[currentLang][activeMapId], false));
                 activeMapId = null;
             }
             map.flyTo([23.8, 44.5], 6, {duration: 1});
@@ -459,8 +422,9 @@
 
         function renderFAQs() {
             const faqSec = document.getElementById('faq-section');
+            const t = uiTranslations[currentLang];
             if (currentRegionData.faqs && currentRegionData.faqs.length > 0) {
-                let html = `<div class="faq-title">💬 أسئلة شائعة عن ${currentRegionData.name}</div>`;
+                let html = `<div class="faq-title">${t.faqTitle} ${currentRegionData.name}</div>`;
                 currentRegionData.faqs.forEach(q => {
                     html += `<button class="faq-btn" onclick="sendQuestionToChat('${q}')">❓ ${q}</button>`;
                 });
@@ -479,6 +443,7 @@
 
             const catData = currentRegionData.categories[catIndex];
             const display = document.getElementById('items-display');
+            const t = uiTranslations[currentLang];
             
             let itemsHtml = catData.items.map((item, index) => `
                 <div class="acc-item" id="acc-item-${catIndex}-${index}">
@@ -495,8 +460,8 @@
 
             display.innerHTML = `
                 ${itemsHtml}
-                <button class="ask-bot-btn" onclick="sendQuestionToChat('حدثني تفاصيل أكثر عن ${catData.title} في ${currentRegionData.name}؟')">
-                    💬 اسأل المعزّب تفاصيل أكثر عن ${catData.title}
+                <button class="ask-bot-btn" onclick="sendQuestionToChat('${t.askFormat(catData.title, currentRegionData.name)}')">
+                    ${t.askBtn} ${catData.title}
                 </button>
             `;
             
@@ -523,9 +488,6 @@
             }, 300);
         }
 
-        // ==========================================
-        // إضافة: نظام إرسال الرسائل الحي (Streaming)
-        // ==========================================
         async function sendMainMessage() {
             const inputField = document.getElementById("main-user-input");
             const message = inputField.value.trim();
@@ -533,23 +495,25 @@
             
             const chatBox = document.getElementById("main-chat-box");
             
-            // عرض رسالة المستخدم
             chatBox.innerHTML += `<div class="message user-msg">${message}</div>`;
             inputField.value = ""; 
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // 2. تجهيز مكان لرسالة البوت عشان تنكتب فيه حرف بحرف
             const botMessageDiv = document.createElement("div");
             botMessageDiv.className = "message bot-msg";
             chatBox.appendChild(botMessageDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // 3. الاتصال بالخلفية (Flask) لاستقبال البث الحي
+            let finalMessage = message;
+            if(currentLang === 'en') {
+                finalMessage = message + " (Please answer in English)";
+            }
+
             try {
                 const response = await fetch('/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify({ message: finalMessage })
                 });
                 
                 const reader = response.body.getReader();
@@ -560,13 +524,11 @@
                     if (done) break;
                     
                     const chunk = decoder.decode(value, {stream: true});
-                    // إضافة النص الجديد للمربع فور وصوله
                     botMessageDiv.innerHTML += chunk;
-                    // النزول لأسفل المحادثة مع كل حرف يكتب
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
             } catch (error) {
-                botMessageDiv.innerHTML += `<span style="color: red;">عذراً، صار في مشكلة في الاتصال.</span>`;
+                botMessageDiv.innerHTML += `<span style="color: red;">Connection error.</span>`;
             }
         }
     </script>
